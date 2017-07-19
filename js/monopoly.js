@@ -1,7 +1,7 @@
 //namespace object
 var Monopoly = {};
 Monopoly.allowRoll = true;
-Monopoly.moneyAtStart = 700;
+Monopoly.moneyAtStart = 100;
 Monopoly.doubleCounter = 0;
 
 //beginning function - getting game ready
@@ -48,13 +48,23 @@ Monopoly.getPlayersMoney = function(player){
 Monopoly.updatePlayersMoney = function(player,amount){
     var playersMoney = parseInt(player.attr("data-money"));
     playersMoney -= amount;
-    if (playersMoney < 0 ){
-        alert("you are broke!")
+    if (playersMoney <= 0 ){
+        Monopoly.showPopup("broke");
+        player.remove();
+        var popup = Monopoly.getPopup("broke");
+        popup.find("button").unbind("click").bind("click",function(){
+            Monopoly.handleAction(player,"broke");
+
+    });
     }
+    else {
     player.attr("data-money",playersMoney);
     player.attr("title",player.attr("id") + ": $" + playersMoney);
     Monopoly.playSound("chaching");
+    }
 };
+
+    
 
 //random numbers appear on each dice after they are rolled
 Monopoly.rollDice = function(){
@@ -115,9 +125,9 @@ Monopoly.setNextPlayerTurn = function(){
         }
         else {
             var currentPlayerTurn = Monopoly.getCurrentPlayer();
-        var playerId = parseInt(currentPlayerTurn.attr("id").replace("player",""));
+            var playerId = parseInt(currentPlayerTurn.attr("id").replace("player",""));
 
-        var nextPlayerId = playerId + 1;
+            var nextPlayerId = playerId + 1;
         if (nextPlayerId > $(".player").length){
             nextPlayerId = 1;
         }
@@ -184,32 +194,60 @@ Monopoly.handleGoToJail = function(player){
     });
     Monopoly.showPopup("jail");
 };
+// el.click(function(event){
 
+// })
 //function for landing on chance
 Monopoly.handleChanceCard = function(player){
     var popup = Monopoly.getPopup("chance");
     popup.find(".popup-content").addClass("loading-state");
+
     $.get("https://itcmonopoly.appspot.com/get_random_chance_card", function(chanceJson){
+        console.log(chanceJson);
         popup.find(".popup-content #text-placeholder").text(chanceJson["content"]);
         popup.find(".popup-title").text(chanceJson["title"]);
         popup.find(".popup-content").removeClass("loading-state");
         popup.find(".popup-content button").attr("data-action",chanceJson["action"]).attr("data-amount",chanceJson["amount"]);
+        chanceJson.amount
     },"json");
     popup.find("button").unbind("click").bind("click",function(){
         var currentBtn = $(this);
         var action = currentBtn.attr("data-action");
         var amount = currentBtn.attr("data-amount");
         Monopoly.handleAction(player,action,amount);
+        Monopoly.setNextPlayerTurn();
     });
     Monopoly.showPopup("chance");
+
+
 };
+
+
 
 //function for landing on community card
 Monopoly.handleCommunityCard = function(player){
-    //TODO: implement this method
-    alert("not implemented yet!")
-    Monopoly.setNextPlayerTurn();
+    var popup = Monopoly.getPopup("community");
+    popup.find(".popup-content").addClass("loading-state");
+
+    $.get("https://itcmonopoly.appspot.com/get_random_community_card", function(communityJson){
+        popup.find(".popup-content #text-placeholder").text(communityJson["content"]);
+        popup.find(".popup-title").text(communityJson["title"]);
+        popup.find(".popup-content").removeClass("loading-state");
+        popup.find(".popup-content button").attr("data-action",communityJson["action"]).attr("data-amount",communityJson["amount"]);
+        communityJson.amount
+    },"json");
+    popup.find("button").unbind("click").bind("click",function(){
+        var currentBtn = $(this);
+        var action = currentBtn.attr("data-action");
+        var amount = currentBtn.attr("data-amount");
+        Monopoly.handleAction(player,action,amount);
+        Monopoly.setNextPlayerTurn();
+    });
+    Monopoly.showPopup("community");
+
+
 };
+
 
 //jail function
 Monopoly.sendToJail = function(player){
@@ -264,7 +302,7 @@ Monopoly.handleBuy = function(player,propertyCell,propertyCost){
     var playersMoney = Monopoly.getPlayersMoney(player)
     if (playersMoney < propertyCost){
         Monopoly.showErrorMsg();
-        Monopoly.playSound(notenoughmoneyProperty);
+        Monopoly.playSound("notenoughmoneyProperty");
     }else{
         Monopoly.updatePlayersMoney(player,propertyCost);
         var rent = Monopoly.calculateProperyRent(propertyCost);
